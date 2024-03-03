@@ -201,9 +201,15 @@ are valid).
 ### Layout diagram (Type 3)
 
 ```
-|Byte0   |Byte1   |Byte2   |Byte3   |Byte 5
-|01010000|IIIIIIII|AAAAAAAA|BBBBBBBB|CCCCCCCC|
+|Byte0   |Byte1   |Byte2   |Byte3   |Byte4   |Byte5   |Byte6   |Byte7   |
+|01010000|IIIIIIII|AAAAAAAA|BBBBBBBB|CCCCCCCC|DDDDDDDD|M0000000|00000000|
 ```
+
+* Does operations on variants allocated on the stack.
+* If binary blob has an associated metatable, it'll try to call instruction overrides from that.
+* A and B are always stack positions, C is compare code or immediate value, D is usually stack but is a register number for `VCMP`.
+* If D used as a 
+* M enables immediate value for shift commands.
 
 ### Instruction codes
 
@@ -226,15 +232,31 @@ are valid).
 |0E  |WRTW  |2|Word write to binary blob/array (unaligned)          |`WRTW a b ##`                  |
 |0F  |WRTDW |2|Doubleword write to binary blob/array (unaligned)    |`WRTDW a b ##`                 |
 |10  |SLICE |2|Creates a slice of an array between indexes a and B, puts new array on top of the stack|`SLICE a b ##`|
+|11  |VADD  |3|Adds variant A and B, stores in D                    |`VADD a b d`                   |
+|12  |VSUB  |3|Subtracts variant B from A, stores in D              |`VSUB a b d`                   |
+|13  |VMUL  |3|Multiplies variant A and B, stores in D              |`VMUL a b d`                   |
+|14  |VDIV  |3|Divides variant A by B, stores in D                  |`VDIV a b d`                   |
+|15  |VMOD  |3|Stores the modulo of A by B in D                     |`VMOD a b d`                   |
+|16  |VLSH  |3|Left shifts variant A by B, stores in D              |`VLSH a b d` or `VLSH a [c] d` |
+|17  |VRSH  |3|Right shifts variant A by B, stores in D             |`VRSH a b d` or `VRSH a [c] d` |
+|18  |VRASH |3|Right arithmetic shifts variant A by B stores in D  |`VRASH a b d` or `VRASH a [c] d`|
+|19  |VAND  |3|Logically ands A and B, stores in D                  |`VAND a b d`                   |
+|1A  |VOR   |3|Logically ors A and B, stores in D                   |`VOR a b d`                    |
+|1B  |VXOR  |3|Logically xors A and B, stores in D                  |`VXOR a b d`                   |
+|1C  |VNOT  |3|Logically nots A, stores in D                        |`VNOT a d`                     |
+|1D  |VCMP  |3|Compares A and B for C, stores in register D         |`VCMP a b cmpcode d{register}` |
 
 ## Conditional jump operations
 
 ### Layout diagram
 
 ```
-|Byte0   |Byte1   |Byte2   |Byte3   |
-|00110000|CCCCCCM0|AAAAAAAA|BBBBBBBB|
+|Byte0   |Byte1   |Byte2   |Byte3   |Byte4(o)|Byte5(o)|Byte6(o)|Byte7(o)|
+|00110000|CCCCCCM0|AAAAAAAA|BBBBBBBB|OOOOOOOO|OOOOOOOO|OOOOOOOO|OOOOOOOO|
 ```
+
+* C designates a condition.
+* M toggles mode. If 0, A and B will be compared.
 
 ## Function call operations
 

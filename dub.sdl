@@ -1,0 +1,5 @@
+name "pingusvm"
+description "Portable Interpreter for General Use (Scripting VM)"
+authors "ZILtoid1991"
+copyright "Copyright © 2024, ZILtoid1991"
+license "BSL-1.0"

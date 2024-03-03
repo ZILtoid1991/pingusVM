@@ -36,3 +36,9 @@
 |10|Function                                                                            |FUNC      |
 |11|Fiber                                                                               |FIBER     |
 |12|Delegate                                                                            |DELEG     |
+|13|Fiber of a delegate                                                                 |DELEGFIBER|
+
+# Best practices
+
+* If a language implements enumerators, then they should be of integer types if possible.
+* Binary blobs are primarily meant for implementing an easy and fast interfacing 
