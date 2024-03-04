@@ -100,7 +100,7 @@ ulong[2] xxh3_128_1to3(ubyte[] source, const ulong seed, const ubyte[] secret) @
 }
 
 ulong[2] xxh3_128_4to8(ubyte[] source, const ulong seed, const ubyte[] secret) @nogc pure nothrow {
-	const ulong[2] secretWords[2] = [*cast(const(ulong)*)(secret.ptr + 16), *cast(const(ulong)*)(secret.ptr + 24)];
+	const ulong[2] secretWords = [*cast(const(ulong)*)(secret.ptr + 16), *cast(const(ulong)*)(secret.ptr + 24)];
 	//const ulong combined = xxh3Combine_4to8(source);
 	//const ulong value = ((secretWords[0] ^ secretWords[1]) + modifiedSeed(seed)) ^ xxh3Combine_4to8(source);
 	const ulong[2] mulResult = 
@@ -139,7 +139,7 @@ ulong[2] xxh3_128_17to128(ubyte[] source, const ulong seed, const ubyte[] secret
 	const size_t numRounds = ((source.length - 1)>>5) + 1;
 	for (sizediff_t i = numRounds ; i >= 0 ; i--) {
 		const offsetStart = i*16;
-		const offsetEnd = inputLenght - (i*16) - 16;
+		const offsetEnd = source.length - (i*16) - 16;
 		const ulong[2] data1 = read128Bits(source, offsetStart);
 		const ulong[2] data2 = read128Bits(source, offsetEnd);
 		acc = mixTwoChunks(acc, data1, data2, i*32, seed, secret);
@@ -178,7 +178,7 @@ ulong[2] xxh3_128_large(ubyte[] source, const ulong seed, const ubyte[] secret) 
 		for (int i = 0; i < 8 ; i++) {
 			const ulong value = stripe[i] ^ secretWords[i];
 			acc[i ^ 1] += stripe[i];
-			acc += (value & 0xFFFF_FFFF) * (value>>32L);
+			acc[i] += (value & 0xFFFF_FFFF) * (value>>32L);
 		}
 	}
 	void roundAccumulate(ubyte[] block) @nogc pure nothrow {
@@ -197,7 +197,7 @@ ulong[2] xxh3_128_large(ubyte[] source, const ulong seed, const ubyte[] secret) 
 	}
 	ulong finalMerge(ulong initValue, const size_t secretOffset) @nogc pure nothrow {
 		const ulong[8] secretWords = readStripe(secret, secretOffset);
-		for (i = 0 ; i < 4 ; i++) {
+		for (int i = 0 ; i < 4 ; i++) {
 			ulong[2] mulResult = multiply128bitUS(acc[i*2] ^ secretWords[i*2], acc[i*2 + 1] ^ secretWords[i*2 + 1]);
 			initValue += mulResult[0] ^ mulResult[1];
 		}
@@ -235,15 +235,16 @@ ulong mixStep(const ulong[2] dataWords, size_t secretOffset, ulong seed, const u
 pragma(inline, true)
 uint xxh3Combine_1to3(ubyte[] source) @nogc @safe pure nothrow {
 	uint result = cast(uint)source.length | (source[0]<<16);
-	if (source >= 2) result |= source[1]<<24;
-	if (source >= 3) result |= source[2];
+	if (source.length >= 2) result |= source[1]<<24;
+	if (source.length >= 3) result |= source[2];
 	return result;
 }
 
 pragma(inline, true)
 ulong xxh3Combine_4to8(ubyte[] source) @nogc @safe pure nothrow {
-	return source[0] | (source[1]<<8L) | (source[2]<<16L) | (source[3]<<24L) | (source[$-4]<<32L) | (source[$-3]<<40L)
-			| (source[$-2]<<48L) | (source[$-1]<<56L);
+	return source[0] | (source[1]<<8L) | (source[2]<<16L) | (source[3]<<24L) | 
+			(cast(ulong)source[$-4]<<32L) | (cast(ulong)source[$-3]<<40L) | (cast(ulong)source[$-2]<<48L) | 
+			(cast(ulong)source[$-1]<<56L);
 }
 
 pragma(inline, true)
@@ -262,7 +263,7 @@ ulong[2] read128Bits(const ubyte[] source, size_t offset) @nogc pure nothrow {
 }
 
 pragma(inline, true)
-ulong[2] readStripe(ubyte[] source, size_t offset) @nogc pure nothrow {
+ulong[8] readStripe(ubyte[] source, size_t offset) @nogc pure nothrow {
 	return [*cast(ulong*)(source.ptr + offset), *cast(ulong*)(source.ptr + offset + 8), 
 		*cast(ulong*)(source.ptr + offset + 16), *cast(ulong*)(source.ptr + offset + 24),
 		*cast(ulong*)(source.ptr + offset + 32), *cast(ulong*)(source.ptr + offset + 40),
@@ -270,7 +271,7 @@ ulong[2] readStripe(ubyte[] source, size_t offset) @nogc pure nothrow {
 }
 
 pragma(inline, true)
-ulong[2] readStripe(const ubyte[] source, size_t offset) @nogc pure nothrow {
+ulong[8] readStripe(const ubyte[] source, size_t offset) @nogc pure nothrow {
 	return [*cast(const(ulong)*)(source.ptr + offset), *cast(const(ulong)*)(source.ptr + offset + 8), 
 		*cast(const(ulong)*)(source.ptr + offset + 16), *cast(const(ulong)*)(source.ptr + offset + 24),
 		*cast(const(ulong)*)(source.ptr + offset + 32), *cast(const(ulong)*)(source.ptr + offset + 40),
@@ -288,10 +289,10 @@ ulong avalanche(ulong x) @nogc @safe pure nothrow {
 pragma(inline, true)
 ulong avalanche_XXH64(ulong x) @nogc @safe pure nothrow {
 	x ^= (x>>33L);
-	X *= PRIME64_2;
+	x *= PRIME64_2;
 	x ^= (x>>29L);
 	x *= PRIME64_3;
-	x ^= (X>>32L);
+	x ^= (x>>32L);
 	return x;
 }
 
@@ -339,7 +340,7 @@ enum PRIME64_5 = 0x27D4EB2F165667C5UL;
 enum PRIME_MX1 = 0x165667919E3779F9UL;  
 enum PRIME_MX2 = 0x9FB21C651E98DF25UL;  
 
-const ubyte defaultSecret[192] = [
+const ubyte[192] defaultSecret = [
   0xb8, 0xfe, 0x6c, 0x39, 0x23, 0xa4, 0x4b, 0xbe, 0x7c, 0x01, 0x81, 0x2c, 0xf7, 0x21, 0xad, 0x1c,
   0xde, 0xd4, 0x6d, 0xe9, 0x83, 0x90, 0x97, 0xdb, 0x72, 0x40, 0xa4, 0xa4, 0xb7, 0xb3, 0x67, 0x1f,
   0xcb, 0x79, 0xe6, 0x4e, 0xcc, 0xc0, 0xe5, 0x78, 0x82, 0x5a, 0xd0, 0x7d, 0xcc, 0xff, 0x72, 0x21,
