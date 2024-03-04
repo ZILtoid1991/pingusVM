@@ -24,7 +24,7 @@
 |04|Small binary blob able to fit into 64 bit                                           |SBLOB     |
 |05|Large binary blob stored on the heap                                                |BLOB      |
 |06|String                                                                              |STR       |
-|07|Hashmap                                                                             |HASH      |
+|07|Hashmap                                                                             |HASHMAP   |
 |08|Array                                                                               |ARRAY     |
 |09|Signed integer array                                                                |INTARRAY  |
 |0A|Unsigned integer array                                                              |UINTARRAY |
