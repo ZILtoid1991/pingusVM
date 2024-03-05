@@ -3,6 +3,14 @@ module pingus.types;
 import std.typecons : BitFlags;
 import pingus.hash;
 
+version (PINGUS_UTF32) {
+	alias PCHR = dchar;
+	alias PSTR = dstring;
+} else {
+	alias PCHR = char;
+	alias PSTR = string;
+}
+
 ///Defines potential variable types.
 enum VarTypeID : ubyte {
 	nulltype		=	0x00,		///Null type/nil/not associated
@@ -32,17 +40,61 @@ enum VarFlags_Protect : ubyte {
 	Constant		=	1 << 1,
 }
 
+struct HeapEntry {
+	uint			id;
+	uint			refcount;
+	ubyte[]			data;
+}
+
+/** 
+ * Implements Variable types, also handles heap management and metatables.
+ */
 struct Var {
+	static MetaTable[] metaTables;
+	static HeapEntry[] heap;
 	ubyte			typeID;			///Denotes type
 	BitFlags!VarFlags_Protect	flags;///Protection flags
 	ubyte 			pad2;			///Currently unused, it's there for 32 bit padding
 	ubyte			pad3;			///Currently unused, it's there for 32 bit padding
-	uint			metatableRef;	///Selects associated metatable if there's any/selects function from metatable.
+	uint			metatableRef;	///Selects associated metatable if there's any.
 	union {
 		double		valF;			///Holds floating-point value
 		long		valI;			///Holds integer value
 		ulong		valU;			///Holds unsigned integer/small blob value
-		uint[2]		valR;			///Holds reference value
+		uint[2]		valR;			///Holds reference value (reference to object/function selection)
+	}
+	this(T)(T val) {
+
+	}
+	///Dereference any array or similar heap allocated things
+	~this() {
+
+	}
+	T opCast(T)() const {
+		import std.math : nearbyint;
+		static if (is(T == ulong) || is(T == uint) || is(T == ushort) || is(T == ubyte)) {
+			switch (typeID) {
+				case VarTypeID.signedInt:
+					return cast(T)valI;
+				case VarTypeID.unsignedInt:
+					return cast(T)valU;
+				case VarTypeID.floatingPoint:
+					return cast(T)nearbyint(valF);
+				default:
+					throw new VarException("Cannot be implicitly converted to selected type!");
+			}
+		} else static if (is(T == long) || is(T == int) || is(T == short) || is(T == byte)) {
+			switch (typeID) {
+				case VarTypeID.signedInt:
+					return cast(T)valI;
+				case VarTypeID.unsignedInt:
+					return cast(T)valU;
+				case VarTypeID.floatingPoint:
+					return cast(T)nearbyint(valF);
+				default:
+					throw new VarException("Cannot be implicitly converted to selected type!");
+			}
+		} else static assert(0, "Casting for type is not supported");
 	}
 }
 
@@ -56,12 +108,12 @@ enum FunctionEntryFlags : ubyte {
 }
 
 alias HostFunc = Var[] function(ulong[8], Var[]);
-alias HostDeleg = Var[] function(Var, ulong[8], Var[]);
+alias HostDeleg = Var[] function(Var, ref ulong[8], Var[]);
 
 struct FunctionEntry {
 	uint			nameHash;		///XXHash32 of the name
 	uint			callConvHash;	///XXHash32 of the calling convention
-	uint			entryPos;		
+	uint			entryPos;		///Function entry point
 	ushort			fileNumL;		///File number identifier (lower two bytes)
 	ubyte			fileNumH;		///File number identifier (upper one byte)
 	BitFlags!FunctionEntryFlags	flags;
@@ -69,10 +121,39 @@ struct FunctionEntry {
 		HostFunc	hostFunc;
 		HostDeleg	hostDeleg;
 	}
+	bool opEquals(const FunctionEntry other) const @nogc @safe pure nothrow {
+		return this.nameHash == other.nameHash && this.callConvHash == other.callConvHash;
+	}
+	size_t toHash() const @nogc @safe pure nothrow {
+		static if (size_t.sizeof == 8)
+			return nameHash | cast(ulong)callConvHash<<32L;
+		else
+			return nameHash ^ (callConvHash<<17) ^ (callConvHash>>15);
+	}
 }
 
 struct MetaTable {
 	uint			nameHash;
 	uint			blobSize;
 	FunctionEntry[]	entries;
+}
+
+struct HashMap {
+	struct HashMapEntry {
+		ulong[2]	key;
+		Var			value;
+	}
+	uint			id;
+	private HashMapEntry[] entries;
+}
+
+public class PingusException : Exception {
+	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
+		super(msg, file, line, nextInChain);
+	}
+}
+public class VarException : PingusException {
+	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
+		super(msg, file, line, nextInChain);
+	}
 }
