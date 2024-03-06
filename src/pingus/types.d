@@ -50,8 +50,9 @@ struct HeapEntry {
  * Implements Variable types, also handles heap management and metatables.
  */
 struct Var {
-	static MetaTable[] metaTables;
-	static HeapEntry[] heap;
+	static MetaTable[] metaTables;	///Associated metatables
+	static HeapEntry[] heap;		
+	static uint		heapCnt;		///Heap counter
 	ubyte			typeID;			///Denotes type
 	BitFlags!VarFlags_Protect	flags;///Protection flags
 	ubyte 			pad2;			///Currently unused, it's there for 32 bit padding
@@ -64,7 +65,29 @@ struct Var {
 		uint[2]		valR;			///Holds reference value (reference to object/function selection)
 	}
 	this(T)(T val) {
+		static if (is(T == ulong) || is(T == uint) || is(T == ushort) || is(T == ubyte)) {
+			valU = val;
+			typeID = VarTypeID.unsignedInt;
+			metatableRef = xxhash32(cast(ubyte[])"UINT");
+		} else static if (is(T == long) || is(T == int) || is(T == short) || is(T == byte)) {
+			valI = val;
+			typeID = VarTypeID.signedInt;
+			metatableRef = xxhash32(cast(ubyte[])"INT");
+		} else static if (is(T == double) || is(T == float) || is(T == real)){
+			valF = val;
+			typeID = VarTypeID.floatingPoint;
+			metatableRef = xxhash32(cast(ubyte[])"FLOAT");
+		} else static if (is(T == PSTR)) {
 
+		} else static if (T.sizeof <= 8) {
+			valU = *cast(ulong*)(cast(void*)&val);
+			typeID = VarTypeID.sBlob;
+			metatableRef = xxhash32(cast(ubyte[])T.stringof);
+		}
+	}
+	package static uint createHeapEntry(T)(T variable) {
+		heapCnt++;
+		return heapCnt;
 	}
 	///Dereference any array or similar heap allocated things
 	~this() {
