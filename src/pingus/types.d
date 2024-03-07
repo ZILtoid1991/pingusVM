@@ -85,13 +85,29 @@ struct Var {
 			metatableRef = xxhash32(cast(ubyte[])T.stringof);
 		}
 	}
-	package static uint createHeapEntry(T)(T variable) {
+	package static uint createHeapEntry(ubyte[] variable) {
+		foreach (ref HeapEntry h ; heap) {
+			if (!h.refcount) {
+				h.data = variable;
+				h.refcount++;
+			}
+		}
 		heapCnt++;
+		heap ~= HeapEntry(heapCnt, 1, variable);
 		return heapCnt;
 	}
 	///Dereference any array or similar heap allocated things
 	~this() {
-
+		if (typeID >= VarTypeID.hashmap && typeID <= VarTypeID.reftype) {
+			foreach (ref HeapEntry h ; heap) {
+				if (valR[0] == h.id) {
+					h.refcount--;
+					if (!h.refcount) {
+						h.data.length = 0;
+					}
+				}
+			}
+		}
 	}
 	T opCast(T)() const {
 		import std.math : nearbyint;
@@ -117,7 +133,8 @@ struct Var {
 				default:
 					throw new VarException("Cannot be implicitly converted to selected type!");
 			}
-		} else static assert(0, "Casting for type is not supported");
+		} 
+		//else static assert(0, "Casting for type is not supported");
 	}
 }
 
