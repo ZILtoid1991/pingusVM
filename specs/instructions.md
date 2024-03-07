@@ -260,4 +260,64 @@ are valid).
 
 ## Function call operations
 
+```
+|Byte0   |Byte1   |Byte2   |Byte3   |
+|00001000|VFTM0000|NNNNNNNN|OOOOOOOO|
+|Metatable name hash                |
+|Function name hash                 |
+|Calling convetion hash             |
+```
+
+* If V is 1, the function will be called from a variable type, then the extra words won't be present, and instead O will indicate on the stack which variable holds the function.
+* If T is 1, the function is vararg type, and calling convention hash is not present.
+* If F is 1, the function is a fiber.
+* If M is 1, the function is a member of a metatable, and metatable hash is present, which otherwise is not.
+* N indicate the number of varargs passed to the function.
+
+### Assembly
+
+`CALL [functionName] {callingConv}/{varargNum}` for calling regular functions.
+
+`CALL [stackPos] {varargNum}` for calling functions from variables.
+
+Replacing `CALL` with `THREAD` will call the function as a fiber if possible.
+
+Examples:
+
+`CALL exampleFunc $INT $INT $FLOAT $UserDefinedType`
+
+`CALL UserDefinedType.exampleFunc $UserDefinedType $INT $INT`
+
+`THREAD exampleFunc 3`
+
+### Calling conventions
+
+Registers 0-7 can hold INT, UINT, FLOAT arguments, and are caller saved. Registers 8-F are callee saved.
+
+Stack holds any further arguments if needed, especially variable type arguments. Top is first.
+
+For return values, both registers and the stack can hold them. Top is first.
+
 ## Interrupt operations
+
+In code, only user interrupts can be generated.
+
+### Interrupt generation
+
+#### Layout diagram
+
+```
+|Byte0   |Byte1   |Byte2   |Byte3   |
+|01001000|GGGGGGGG|IIIIIIII|IIIIIIII|
+```
+
+* I designates the interrupt code.
+* G designates the group code (0-127= non-returning interrupts, 128-255= returning interrupts).
+
+#### Assembly
+
+`INT [interruptNumber] [interruptGroup]`
+
+### Interrupt registration
+
+### Interrupt clear
