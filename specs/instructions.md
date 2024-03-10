@@ -251,12 +251,31 @@ are valid).
 ### Layout diagram
 
 ```
-|Byte0   |Byte1   |Byte2   |Byte3   |Byte4(o)|Byte5(o)|Byte6(o)|Byte7(o)|
-|00110000|CCCCCCM0|AAAAAAAA|BBBBBBBB|OOOOOOOO|OOOOOOOO|OOOOOOOO|OOOOOOOO|
+|Byte0   |Byte1   |Byte2   |Byte3   |Byte4   |Byte5   |Byte6   |Byte7   |
+|00110000|CCCCCCM0|AAAAAAAA|BBBBBBBB|PPPPPPPP|PPPPPPPP|PPPPPPPP|PPPPPPPP|
 ```
 
 * C designates a condition.
-* M toggles mode. If 0, A and B will be compared.
+* M toggles mode. If 0, A and B will be compared. If 1, a 64 bit value follows it, which is compared against A.
+* P designates the position of jump.
+
+### Assembly
+
+`JMPxx a b [jumpPosition]`
+
+### Condition codes
+
+|Code|ASM|Description                                               |
+|----|---|----------------------------------------------------------|
+|00  |   |Jump always                                               |
+|01  |EQ |Jump if A is equals with B                                |
+|02  |GE |Jump if A is greater than or equals with B                |
+|03  |GT |Jump if A is greater than B                               |
+|04  |LE |Jump if A is less than or equals with B                   |
+|05  |LT |Jump if A is less than B                                  |
+|06  |SE |Jump if at least one bit high in A and B at the same position|
+|07  |NE |Jump if A isn't equal with B                              |
+|08  |NH |Jump if none of the bits high in A and B at the same position|
 
 ## Function call operations
 
@@ -298,6 +317,21 @@ Stack holds any further arguments if needed, especially variable type arguments.
 
 For return values, both registers and the stack can hold them. Top is first.
 
+## Function/interrupt return
+
+#### Layout diagram
+
+```
+|Byte0   |Byte1   |Byte2   |Byte3   |
+|01001000|00000000|00000000|00000000|
+```
+
+There's no further arguments for this instruction.
+
+#### Assembly
+
+`RET`
+
 ## Interrupt operations
 
 In code, only user interrupts can be generated.
@@ -308,7 +342,7 @@ In code, only user interrupts can be generated.
 
 ```
 |Byte0   |Byte1   |Byte2   |Byte3   |
-|01001000|GGGGGGGG|IIIIIIII|IIIIIIII|
+|00101000|GGGGGGGG|IIIIIIII|IIIIIIII|
 ```
 
 * I designates the interrupt code.
@@ -316,8 +350,39 @@ In code, only user interrupts can be generated.
 
 #### Assembly
 
-`INT [interruptNumber] [interruptGroup]`
+`INT [interruptGroup] [interruptNumber]`
 
 ### Interrupt registration
 
+Registers an interrupt entry point.
+
+#### Layout diagram
+
+```
+|Byte0   |Byte1   |Byte2   |Byte3   |Byte4   |Byte5   |Byte6   |Byte7   |
+|01101000|GGGGGGGG|G0000000|00000000|PPPPPPPP|PPPPPPPP|PPPPPPPP|PPPPPPPP|
+```
+
+* G designates the group code (0-127= non-returning interrupts, 128-255= returning interrupts, 256= interrupts from interpreter, 257-511= currently undefined).
+* P designates entry point.
+
+#### Assembly
+
+`INTREG [interruptGroup] [entryPointLabel]`
+
 ### Interrupt clear
+
+Clears an interrupt entry point.
+
+#### Layout diagram
+
+```
+|Byte0   |Byte1   |Byte2   |Byte3   |
+|00011000|GGGGGGGG|G0000000|00000000|
+```
+
+* G designates the group code (0-127= non-returning interrupts, 128-255= returning interrupts, 256= interrupts from interpreter, 257-511= currently undefined).
+
+#### Assembly
+
+`INTCLR [interruptGroup]`
