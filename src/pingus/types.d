@@ -2,6 +2,7 @@ module pingus.types;
 
 import std.typecons : BitFlags;
 import pingus.hash;
+import bitleveld.reinterpret;
 
 version (PINGUS_UTF32) {
 	alias PCHR = dchar;
@@ -51,7 +52,7 @@ struct HeapEntry {
  */
 struct Var {
 	static MetaTable[] metaTables;	///Associated metatables
-	static HeapEntry[] heap;		
+	static HeapEntry[] heap;		///Heap management table
 	static uint		heapCnt;		///Heap counter
 	ubyte			typeID;			///Denotes type
 	BitFlags!VarFlags_Protect	flags;///Protection flags
@@ -63,6 +64,18 @@ struct Var {
 		long		valI;			///Holds integer value
 		ulong		valU;			///Holds unsigned integer/small blob value
 		uint[2]		valR;			///Holds reference value (reference to object/function selection)
+	}
+	this(HostFunc f, string funcName, string callConv, bool varArg, bool noReturn) {
+		FunctionEntry fe = FunctionEntry(xxhash32(cast(ubyte[])funcName), xxhash32(cast(ubyte[])callConv), f, varArg, noReturn);
+		valR = createHeapEntry(reinterpretAsArray!ubyte(fe));
+		typeID = VarTypeID.func;
+		//metatableRef = xxhash32(cast(ubyte[])T.stringof);
+	}
+	this(HostDeleg d, string funcName, string callConv, bool varArg, bool noReturn) {
+		FunctionEntry fe = FunctionEntry(xxhash32(cast(ubyte[])funcName), xxhash32(cast(ubyte[])callConv), d, varArg, noReturn);
+		valR = createHeapEntry(reinterpretAsArray!ubyte(fe));
+		typeID = VarTypeID.deleg;
+		//metatableRef = xxhash32(cast(ubyte[])T.stringof);
 	}
 	this(T)(T val) {
 		static if (is(T == ulong) || is(T == uint) || is(T == ushort) || is(T == ubyte)) {
@@ -78,10 +91,16 @@ struct Var {
 			typeID = VarTypeID.floatingPoint;
 			metatableRef = xxhash32(cast(ubyte[])"FLOAT");
 		} else static if (is(T == PSTR)) {
-
+			valR = createHeapEntry(reinterpretCast!ubyte(val));
+			typeID = VarTypeID.str;
+			metatableRef = xxhash32(cast(ubyte[])"STR");
 		} else static if (T.sizeof <= 8) {
 			valU = *cast(ulong*)(cast(void*)&val);
 			typeID = VarTypeID.sBlob;
+			metatableRef = xxhash32(cast(ubyte[])T.stringof);
+		} else {
+			valR = createHeapEntry(reinterpretAsArray!ubyte(val));
+			typeID = VarTypeID.blob;
 			metatableRef = xxhash32(cast(ubyte[])T.stringof);
 		}
 	}
@@ -95,6 +114,13 @@ struct Var {
 		heapCnt++;
 		heap ~= HeapEntry(heapCnt, 1, variable);
 		return heapCnt;
+	}
+	package static void shrink() {
+		HeapEntry[] newHeap;
+		foreach (HeapEntry key; heap) {
+			if (key.refcount) newHeap ~= key;
+		}
+		heap = newHeap;
 	}
 	///Dereference any array or similar heap allocated things
 	~this() {
@@ -147,8 +173,8 @@ enum FunctionEntryFlags : ubyte {
 	exp				=	1 << 5,		///Export function (visible to host)
 }
 
-alias HostFunc = Var[] function(ulong[8], Var[]);
-alias HostDeleg = Var[] function(Var, ref ulong[8], Var[]);
+alias HostFunc = Var[] function(ref ulong[16], Var[]);
+alias HostDeleg = Var[] function(Var, ref ulong[16], Var[]);
 
 struct FunctionEntry {
 	uint			nameHash;		///XXHash32 of the name
@@ -160,6 +186,22 @@ struct FunctionEntry {
 	union {
 		HostFunc	hostFunc;
 		HostDeleg	hostDeleg;
+	}
+	this (uint nameHash, uint callConvHash, HostFunc hostFunc, bool varArg, bool noReturn) {
+		this.nameHash = nameHash;
+		this.callConvHash = callConvHash;
+		this.hostFunc = hostFunc;
+		flags.ext = true;
+		flags.varArg = varArg;
+		flags.noReturn = noReturn;
+	}
+	this (uint nameHash, uint callConvHash, HostDeleg hostDeleg, bool varArg, bool noReturn) {
+		this.nameHash = nameHash;
+		this.callConvHash = callConvHash;
+		this.hostDeleg = hostDeleg;
+		flags.ext = true;
+		flags.varArg = varArg;
+		flags.noReturn = noReturn;
 	}
 	bool opEquals(const FunctionEntry other) const @nogc @safe pure nothrow {
 		return this.nameHash == other.nameHash && this.callConvHash == other.callConvHash;
