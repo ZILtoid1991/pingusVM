@@ -100,7 +100,7 @@ Code is hexanumeric number.
 |043 |CVTFI|Convert A into integer by truncating            |`D[I] = truncate(A[FP])`               |
 |044 |TRNC |Truncate A                                      |`D[FP] = truncate(A[FP])`              |
 |045 |RNDWB|Round A with B as point of reference            |`D = round(A, B)`                      |
-|046 |FMIN |Move the greater value to D(floating-pont)      |`D = A > B ? A : B`                    |
+|046 |FMAX |Move the greater value to D(floating-pont)      |`D = A > B ? A : B`                    |
 |047 |FMIN |Move the lesser value to D(floating-pint)       |`D = A < B ? A : B`                    |
 |048 |FLMT |Limit D's value between A and B(FP)             |`D = MIN(MAX(D, A), B)`                |
 |049 |SIN  |Returns the sine of A                           |`D = SIN(A)`                           |
@@ -157,6 +157,7 @@ identified by I in the layout diagram.
 |02  |0|POP  |Pops the top of the stack into the specified register |`POP R`                        |
 |02  |1|DSCRD|Discards the specified amount of data from the stack  |`DSCRD ####`                   |
 |03  |0|PEEK |Gets a previous element from the stack without pop    |`PEEK R ####`                  |
+|03  |1|PEEKD|Pushes the specified previous element on the stack to the top|`PEEKD ####`            |
 |04  |0|POKE |Sets a previous element in the stack without push     |`POKE R ####`                  |
 |04  |1|POKED|Sets a previous element in the stack to the supplied data|`POKED [val] ####`          |
 
@@ -386,3 +387,11 @@ Clears an interrupt entry point.
 #### Assembly
 
 `INTCLR [interruptGroup]`
+
+## Metatable and function registration
+
+While it's advised to use the binary formats own function and metatable registration systems.
+
+## Chain operation
+
+Loads a binary file by the given name, and runs any initialization function it has.
