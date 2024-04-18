@@ -40,11 +40,13 @@ enum VarFlags_Protect : ubyte {
 	Protect			=	1 << 0,
 	Constant		=	1 << 1,
 }
-
+/**
+ * Defines a single entry in the heap.
+ */
 struct HeapEntry {
-	uint			id;
-	uint			refcount;
-	ubyte[]			data;
+	uint			id;			///Identifier of the heap entry
+	uint			refcount;	///Reference counter
+	ubyte[]			data;		///Data held by the heap
 }
 
 /** 
@@ -115,6 +117,9 @@ struct Var {
 		heap ~= HeapEntry(heapCnt, 1, variable);
 		return heapCnt;
 	}
+	/**
+	 * Shrinks the heap by removing any dereferenced types.
+	 */
 	package static void shrink() {
 		HeapEntry[] newHeap;
 		foreach (HeapEntry key; heap) {
@@ -135,6 +140,7 @@ struct Var {
 			}
 		}
 	}
+	///Tries to cast the content of the Var to the requested type.
 	T opCast(T)() const {
 		import std.math : nearbyint;
 		static if (is(T == ulong) || is(T == uint) || is(T == ushort) || is(T == ubyte)) {
@@ -159,7 +165,18 @@ struct Var {
 				default:
 					throw new VarException("Cannot be implicitly converted to selected type!");
 			}
-		} 
+		} else static if (is(T == real) || is(T == double) || is(T == float)) {
+			switch (typeID) {
+				case VarTypeID.signedInt:
+					return valI;
+				case VarTypeID.unsignedInt:
+					return valU;
+				case VarTypeID.floatingPoint:
+					return valF;
+				default:
+					throw new VarException("Cannot be implicitly converted to selected type!");
+			}
+		}
 		//else static assert(0, "Casting for type is not supported");
 	}
 }
@@ -227,6 +244,62 @@ struct HashMap {
 	}
 	uint			id;
 	private HashMapEntry[] entries;
+}
+
+struct VMInstruction {
+	union {
+		uint		base;
+		ubyte[4]	bytes;
+	}
+	this (uint base) {
+		this.base = base;
+	}
+	public bool isRegInstr() @nogc @safe pure nothrow const {
+		return bytes[0] & 1 == 1;
+	}
+	public uint getRegInstNum() @nogc @safe pure nothrow const {
+		return (bytes[0]>>1) | ((bytes[1] & 0xF0)<<3);
+	}
+	public ubyte rD() @nogc @safe pure nothrow const {
+		return bytes[1] & 0x0F;
+	}
+	public ubyte rA() @nogc @safe pure nothrow const {
+		return bytes[2];
+	}
+	public ubyte rB() @nogc @safe pure nothrow const {
+		return bytes[3];
+	}
+	public uint getMiscInstNum() @nogc @safe pure nothrow const {
+		return bytes[0]>>1;
+	}
+	public ubyte rR() @nogc @safe pure nothrow const {
+		return bytes[1]>>4;
+	}
+	public ubyte stack_isDirectData() @nogc @safe pure nothrow const {
+		return bytes[1] & 0x08 == 0x08;
+	}
+	public ubyte stack_isExtended() @nogc @safe pure nothrow const {
+		return bytes[1] & 0x04 == 0x04;
+	}
+	public uint stack_getAmount() @nogc @safe pure nothrow const {
+		return bytes[2] | (bytes[3]<<8);
+	}
+	public bool isHeapInstr() @nogc @safe pure nothrow const {
+		return bytes[0] == 0x05;
+	}
+	public ubyte getHeapInstrNum() @nogc @safe pure nothrow const {
+		return bytes[1];
+	}
+	public uint heap_getT() @nogc @safe pure nothrow const {
+		return bytes[2] | ((bytes[3] & 0x3F)<<8);
+	}
+	public ubyte heapT2_rA() @nogc @safe pure nothrow const {
+		return bytes[2]>>4;
+	}
+	public ubyte heapT2_rB() @nogc @safe pure nothrow const {
+		return bytes[3] & 0x0F;
+	}
+	alias heapT2_rC = rB;
 }
 
 public class PingusException : Exception {
