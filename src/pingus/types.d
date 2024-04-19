@@ -439,7 +439,7 @@ struct HashMap {
 	uint			id;
 	private HashMapEntry[] entries;
 }
-
+///helper struct for reading and writing binary instructions
 struct VMInstruction {
 	union {
 		uint		base;
@@ -536,6 +536,25 @@ struct VMInstruction {
 	}
 	alias isSysIntr = fromVar;
 }
+///Defines the header of a PingusVM executable
+public struct PingusHeader {
+	enum Flags {
+		UTF32			=	1<<0,		///If set, the file contains UTF-32 strings, otherwise all strings are UTF-8 encoded
+	}
+	ushort		verMaj;		///Major binary version
+	ushort		verMin;		///Minor binary version
+	uint		flags;		///Bitflags for settings
+	uint		reserved;	///Unused as of now
+	uint		targetID;	///ID of the target, ideally XXHash32 of targen name
+	char[16]	language;	///Source language/dialect name
+}
+///Defines a binary file for a PingusVM executable
+public struct PingusBinFile {
+	PingusHeader	header;		///Header of the file.
+	string[string]	metadata;	///Metadata found in this file
+	MetaTable[]		metatables;	///All metatables defined in this file.
+	uint[]			bin;		///The binary of the file
+}
 
 public class PingusException : Exception {
 	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
@@ -543,6 +562,11 @@ public class PingusException : Exception {
 	}
 }
 public class VarException : PingusException {
+	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
+		super(msg, file, line, nextInChain);
+	}
+}
+public class UnhandledInterruptException : PingusException {
 	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
 		super(msg, file, line, nextInChain);
 	}
