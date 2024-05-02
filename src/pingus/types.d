@@ -375,7 +375,7 @@ struct Var {
 	}
 }
 
-enum FunctionEntryFlags : ubyte {
+enum FunctionEntryFlags : uint {
 	isConst			=	1 << 0,		///Function guaranteed to not modify globals and/or associated binary blob
 	noReturn		=	1 << 1,		///Function does not return anything (can become a fiber)
 	varArg			=	1 << 2,		///Arbitrary amount of arguments (calling convention hashing won't be done)
@@ -391,8 +391,6 @@ struct FunctionEntry {
 	uint			nameHash;		///XXHash32 of the name
 	uint			callConvHash;	///XXHash32 of the calling convention
 	uint			entryPos;		///Function entry point
-	ushort			fileNumL;		///File number identifier (lower two bytes)
-	ubyte			fileNumH;		///File number identifier (upper one byte)
 	BitFlags!FunctionEntryFlags	flags;
 	union {
 		HostFunc	hostFunc;
@@ -538,13 +536,13 @@ struct VMInstruction {
 }
 ///Defines the header of a PingusVM executable
 public struct PingusHeader {
-	enum Flags {
+	enum Flags : uint {
 		UTF32			=	1<<0,		///If set, the file contains UTF-32 strings, otherwise all strings are UTF-8 encoded
 	}
 	ushort		verMaj;		///Major binary version
 	ushort		verMin;		///Minor binary version
 	uint		flags;		///Bitflags for settings
-	uint		reserved;	///Unused as of now
+	uint		nameHash;	///Should be the XXHash32 of the last name
 	uint		targetID;	///ID of the target, ideally XXHash32 of targen name
 	char[16]	language;	///Source language/dialect name
 }
