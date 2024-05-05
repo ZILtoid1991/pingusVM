@@ -93,7 +93,7 @@ Code is hexanumeric number.
 |03C |FMNC |Multiply-subtract(floating point)               |`D -= A * B`                           |
 |03D |ROOT |Return the Bth root of A(FP)                    |`D = ROOT(A, B)`                       |
 |03E |POW  |Return the Bth exponent of A(FP)                |`D = A^B`                              |
-|03F |LOG  |Return the B-based logarithm of A(FP)           |`D = logB(A)`                          |
+|03F |LOG  |Return the logarithm of A(FP)                   |`D = log(A)`                           |
 |040 |CVIF |Convert A integer into a floating point number  |`D[FP] = A[I]`                         |
 |041 |CVRFI|Convert A into integer by rounding              |`D[I] = round(A[FP])`                  |
 |042 |ROUND|Round A                                         |`D[FP] = round(A[FP])`                 |
@@ -106,7 +106,6 @@ Code is hexanumeric number.
 |049 |SIN  |Returns the sine of A                           |`D = SIN(A)`                           |
 |04A |COS  |Returns the cosine of A                         |`D = COS(A)`                           |
 |04B |TAN  |Returns the tangent of A                        |`D = TAN(A)`                           |
-|04C |COT  |Returns the cotangent of A                      |`D = COT(A)`                           |
 |060 |CMPEQ|Shifts 1 into D if equal, 0 otherwise(int)      |`D = (D<<1) OR A == B ? 1 : 0`         |
 |061 |CMPGT|Shifts 1 into D if A > B, 0 otherwise(int)      |`D = (D<<1) OR A > B ? 1 : 0`          |
 |062 |CMPGE|Shifts 1 into D if A >= B, 0 otherwise(int)     |`D = (D<<1) OR A >= B ? 1 : 0`         |
@@ -115,7 +114,7 @@ Code is hexanumeric number.
 |065 |FCMGT|Shifts 1 into D if A > B, 0 otherwise(FP)       |`D = (D<<1) OR A > B ? 1 : 0`          |
 |066 |FCMGE|Shifts 1 into D if A >= B, 0 otherwise(FP)      |`D = (D<<1) OR A >= B ? 1 : 0`         |
 |067 |FCMNE|Shifts 1 into D if not equal, 0 otherwise(FP)   |`D = (D<<1) OR A != B ? 1 : 0`         |
-|068 |FCMCL|Sets D to 1 if A and B are within D(FP)         |`D = A + D < B OR A - D > B ? 1 : 0`   |
+|068 |FCMCL|Sets D to 1 if A and B are within D(FP)         |`D = A + D > B AND A - D < B ? 1 : 0`  |
 |069 |ISNAN|Shifts 1 into D if A is NaN                     |`D = (D<<1) OR ISNAN(A) ? 1 : 0`       |
 
 ## Assembly examples
@@ -136,13 +135,14 @@ for instruction codes, but some use extra bits for multiplexing.
 
 ```
 |Byte0   |Byte1   |Byte2   |Byte3   |
-|0IIIIIII|RRRRDS00|AAAAAAAA|AAAAAAAA|
+|0IIIIIII|RRRRDST0|AAAAAAAA|AAAAAAAA|
 ```
 
 * R indicates the register number if register is used by the operations.
 * D usually switches between register or direct data, otherwise it's zero.
 * S is usually zero, otherwise indicates 32 bit integer values for PUSHD and POKED operations.
-* A indicates the amount for the given operation.
+* A indicates the amount for the given operation, or the lower 8 bits can serve as .
+* T is used for PEEKR so far.
 
 ### Instruction code
 
@@ -158,6 +158,8 @@ identified by I in the layout diagram.
 |02  |1|DSCRD|Discards the specified amount of data from the stack  |`DSCRD ####`                   |
 |03  |0|PEEK |Gets a previous element from the stack without pop    |`PEEK R ####`                  |
 |03  |1|PEEKD|Pushes the specified previous element on the stack to the top|`PEEKD ####`            |
+|03|0/T|PEEKR|Gets the element to R by register/stack value of A    |`PEEKR R A`                    |
+|03|1/T|PKDR |Pushes the element specified by register/stack value of A on the top of the stack|`PKDR A`|
 |04  |0|POKE |Sets a previous element in the stack without push     |`POKE R ####`                  |
 |04  |1|POKED|Sets a previous element in the stack to the supplied data|`POKED [val] ####`          |
 
@@ -282,7 +284,8 @@ are valid).
 
 ```
 |Byte0   |Byte1   |Byte2   |Byte3   |
-|00001000|VFTM0000|NNNNNNNN|OOOOOOOO|
+|00001000|VFTMP000|NNNNNNNN|OOOOOOOO|
+|Package name hash                  |
 |Metatable name hash                |
 |Function name hash                 |
 |Calling convetion hash             |
@@ -292,6 +295,7 @@ are valid).
 * If T is 1, the function is vararg type, and calling convention hash is not present.
 * If F is 1, the function is a fiber.
 * If M is 1, the function is a member of a metatable, and metatable hash is present, which otherwise is not.
+* If P is 1, the function call has a package name hash.
 * N indicate the number of varargs passed to the function.
 
 ### Assembly
