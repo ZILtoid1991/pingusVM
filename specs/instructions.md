@@ -116,6 +116,21 @@ Code is hexanumeric number.
 |067 |FCMNE|Shifts 1 into D if not equal, 0 otherwise(FP)   |`D = (D<<1) OR A != B ? 1 : 0`         |
 |068 |FCMCL|Sets D to 1 if A and B are within D(FP)         |`D = A + D > B AND A - D < B ? 1 : 0`  |
 |069 |ISNAN|Shifts 1 into D if A is NaN                     |`D = (D<<1) OR ISNAN(A) ? 1 : 0`       |
+|0A0 |BPRD |Reads 64 bit value into D from base pointer B with offset A|`D = bp(B)[A]`|
+|0A1 |BPRDW|Reads 32 bit unsigned value into D from base pointer B with offset A|`D = (WORD)bp(B)[A]`|
+|0A2 |BPRDHW|Reads 16 bit unsigned value into D from base pointer B with offset A|`D = (HALFWORD)bp(B)[A]`|
+|0A3 |BPRDB|Reads 8 bit unsigned value into D from base pointer B with offset A|`D = (BYTE)bp(B)[A]`|
+|0A4 |BPRDSW|Reads 32 bit signed value into D from base pointer B with offset A|`D = (SWORD)bp(B)[A]`|
+|0A5 |BPRDSHW|Reads 16 bit signed value into D from base pointer B with offset A|`D = (SHWORD)bp(B)[A]`|
+|0A6 |BPRDSB|Reads 8 bit signed value into D from base pointer B with offset A|`D = (SBYTE)bp(B)[A]`|
+|0A7 |BPRDBI|Reads a bit into D from base pointer B with offset A|`D = (D<<1) | (BIT)bp(B)[A]`|
+|0A8 |BPRDSF|Reads a single-precision floating point value into D from base pointer B with offset A|`D = (SINGLE)bp(B)[A]`|
+|0B0 |BPWR |Writes 64 bit value from D into base pointer B with offset A|`bp(B)[A] = D`|
+|0B1 |BPWRW|Writes 32 bit value from D into base pointer B with offset A|`(WORD)bp(B)[A] = D`|
+|0B2 |BPWRHW|Writes 16 bit value from D into base pointer B with offset A|`(HALFWORD)bp(B)[A] = D`|
+|0B3 |BPWRB|Writes 8 bit value from D into base pointer B with offset A|`(BYTE)bp(B)[A] = D`|
+|0B7 |BPWRBI|Writes a bit into base pointer B with offset A depending on least significant bit of D|`(BIT)bp(B)[A] = D[0]`|
+|0B8 |BPWRSF|Writes a single-precision floating point value from D into base pointer B with offset A|`(SINGLE)bp(B)[A] = D`|
 
 ## Assembly examples
 
